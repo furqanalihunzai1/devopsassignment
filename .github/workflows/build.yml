@@ -1,0 +1,35 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: 990754292191.dkr.ecr.us-east-1.amazonaws.com/atif
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Login to ECR
+        id: login
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          region: ${{ env.AWS_REGION }}
+          registry: ${{ env.ECR_REPOSITORY }}
+      - name: Build and push Docker image
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.login.outputs.registry }}
+          ECR_REPOSITORY: ${{ steps.login.outputs.repository }}
+          ECR_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ECR_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ECR_TAG
+      - name: Write image digest to output
+        run: |
+          echo "${{ steps.build.outputs.digest }}" >> $GITHUB_ENV
